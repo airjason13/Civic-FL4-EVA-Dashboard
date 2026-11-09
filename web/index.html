@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2023 Honda Civic e:HEV (FL4) - EVA 綾波零 戰術座艙儀表 [Web 即時體驗版]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        body {
+            background-color: #030206;
+            color: #e0e0e0;
+            font-family: 'Share Tech Mono', monospace, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 1280px;
+            aspect-ratio: 1280 / 720;
+            background: #06040a;
+            border-radius: 4px;
+            box-shadow: 0 0 35px rgba(255, 102, 0, 0.15), 0 0 15px rgba(0, 255, 128, 0.1);
+            overflow: hidden;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        /* Tactical Control Deck */
+        .control-deck {
+            width: 100%;
+            max-width: 1280px;
+            margin-top: 12px;
+            background: rgba(14, 10, 22, 0.95);
+            border: 1.5px solid #6b149b;
+            border-radius: 6px;
+            padding: 12px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }
+        .deck-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(176, 102, 255, 0.2);
+            padding-bottom: 8px;
+        }
+        .deck-title {
+            color: #ff9900;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .deck-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .hud-btn {
+            background: rgba(20, 16, 32, 0.9);
+            border: 1.5px solid #ff6600;
+            color: #ff9900;
+            padding: 6px 14px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .hud-btn:hover {
+            background: #ff6600;
+            color: #06040a;
+            box-shadow: 0 0 12px #ff6600;
+        }
+        .hud-btn.active {
+            background: #00ff66;
+            border-color: #00ff66;
+            color: #06040a;
+            box-shadow: 0 0 14px #00ff66;
+        }
+        .hud-btn.btn-purple {
+            border-color: #b066ff;
+            color: #b066ff;
+        }
+        .hud-btn.btn-purple:hover {
+            background: #b066ff;
+            color: #06040a;
+            box-shadow: 0 0 12px #b066ff;
+        }
+        .slider-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .slider-label {
+            font-size: 11px;
+            color: #8a7a9a;
+            display: flex;
+            justify-content: space-between;
+        }
+        .slider-label span {
+            color: #00ff66;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #181226;
+            border-radius: 3px;
+            outline: none;
+            border: 1px solid #4a2870;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ff6600;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 8px #ff6600;
+        }
+        .speech-banner {
+            background: rgba(8, 6, 14, 0.95);
+            border: 1px solid #ff6600;
+            padding: 8px 14px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .speech-tag {
+            color: #ff3333;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="canvas-container">
+        <canvas id="dashboardCanvas" width="1280" height="720"></canvas>
+    </div>
+
+    <!-- HUD Tactical Control Deck -->
+    <div class="control-deck">
+        <div class="deck-header">
+            <div class="deck-title">
+                <span>▲ NERV MAGI TACTICAL CONTROL DECK // FL4 e:HEV</span>
+            </div>
+            <div class="deck-buttons">
+                <button id="btnAutoSim" class="hud-btn active">🚗 實時自動路試模擬：開啟</button>
+                <button id="btnToggleTheme" class="hud-btn btn-purple">🔄 切換主題 [T] (EVA / 賽博龐克)</button>
+                <button id="btnVoice" class="hud-btn">🔊 綾波零語音朗讀：開啟</button>
+            </div>
+        </div>
+
+        <div class="speech-banner">
+            <div>
+                <span id="speechTagUI" class="speech-tag">⚡ 純電巡航 (EV)</span>
+                <span id="speechTextUI">「內部電源運作中，神經迴路……無異常。」</span>
+            </div>
+            <div style="font-size: 11px; color: #ff9900;">[ 模擬行駛中將依油門與 G 力自動切換 5 大專屬語音 ]</div>
+        </div>
+
+        <div class="slider-grid">
+            <div class="slider-group">
+                <div class="slider-label">油門踏板 (THROTTLE): <span id="valThrottle">42%</span></div>
+                <input type="range" id="sliderThrottle" min="0" max="100" value="42">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">車速 (SPEED): <span id="valSpeed">58 km/h</span></div>
+                <input type="range" id="sliderSpeed" min="0" max="180" value="58">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">過彎橫向 G 力 (LAT G): <span id="valGLat">+0.12 G</span></div>
+                <input type="range" id="sliderGLat" min="-100" max="100" value="12">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">大電殘量 (BATTERY SoC): <span id="valSoC">78%</span></div>
+                <input type="range" id="sliderSoC" min="10" max="100" value="78">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. ASSETS & INITIALIZATION
+        // ==========================================
+        const canvas = document.getElementById('dashboardCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = 1280;
+        const H = 720;
+
+        // Image assets
+        const reiImg = new Image();
+        reiImg.src = 'eva_rei_cropped.jpg';
+
+        const rqImg = new Image();
+        rqImg.src = 'cyber_race_queen_cropped.jpg';
+
+        // State variables
+        let theme = "eva"; // "eva" or "cyberpunk"
+        let autoSim = true;
+        let voiceEnabled = true;
+        let animTick = 0;
+        let lastSpeechText = "";
+
+        // Telemetry state
+        const telemetry = {
+            speed_kmh: 58.0,
+            engine_rpm: 0,
+            motor_power_kw: 28.5,
+            throttle_pct: 42.0,
+            battery_soc_pct: 78.0,
+            battery_voltage_v: 178.0,
+            battery_temp_c: 25.0,
+            coolant_temp_c: 89.0,
+            aux_voltage: 14.3,
+            g_lat: 0.12,
+            g_long: 0.18,
+            drive_mode: 'EV',
+            gear: 'D',
+            is_connected: true
+        };
+
+        // Oscilloscope history buffers
+        const voltHistory = Array.from({length: 40}, (_, i) => 176 + Math.sin(i * 0.4) * 6);
+        const tempHistory = Array.from({length: 40}, (_, i) => 24 + Math.cos(i * 0.3) * 2);
+
+        // ==========================================
+        // 2. SPEECH SYNTHESIS HELPER
+        // ==========================================
+        function speakVoice(text) {
+            if (!voiceEnabled || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(text.replace(/[「」……]/g, ' '));
+            utter.lang = 'zh-TW';
+            utter.rate = 0.92; // Calm, deliberate cadence
+            utter.pitch = 1.05;
+            window.speechSynthesis.speak(utter);
+        }
+
+        // ==========================================
+        // 3. COLOR PALETTE DEFINITIONS
+        // ==========================================
+        const EVA = {
+            BG_DARK: '#050308',
+            HEX_BG: 'rgba(8, 6, 14, 0.95)',
+            EVA_GREEN: '#00ff66',
+            EVA_YELLOW: '#ffee55',
+            NERV_ORANGE: '#ff6600',
+            NERV_RED: '#ff1122',
+            NERV_AMBER: '#ffaa00',
+            PURPLE_FRAME: '#7818aa',
+            PURPLE_DIM: 'rgba(120, 24, 170, 0.4)',
+            TEXT_WHITE: '#ffffff',
+            TEXT_MUTED: '#9988aa',
+            TEXT_DIM: '#554466'
+        };
+
+        const CYBER = {
+            BG_DARK: '#04070c',
+            CYAN: '#00f0ff',
+            CYAN_DIM: '#008899',
+            MAGENTA: '#ff0055',
+            YELLOW: '#ffee00',
+            TEXT_WHITE: '#ffffff'
+        };
+
+        // ==========================================
+        // 4. MAIN RENDER LOOP (60 FPS)
+        // ==========================================
+        function render() {
+            animTick++;
+
+            // Update auto simulation if enabled
+            if (autoSim) {
+                updateAutoSimulation();
+            }
+
+            // Push oscilloscope wave history
+            if (animTick % 3 === 0) {
+                voltHistory.push(telemetry.battery_voltage_v + Math.sin(animTick * 0.1) * 3);
+                if (voltHistory.length > 40) voltHistory.shift();
+                tempHistory.push(telemetry.battery_temp_c + Math.cos(animTick * 0.08) * 1.5);
+                if (tempHistory.length > 40) tempHistory.shift();
+            }
+
+            ctx.clearRect(0, 0, W, H);
+
+            if (theme === "eva") {
+                renderEvaDashboard();
+            } else {
+                renderCyberpunkDashboard();
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        // ==========================================
+        // 5. EVA DASHBOARD RENDERER
+        // ==========================================
+        function renderEvaDashboard() {
+            // Background
+            ctx.fillStyle = EVA.BG_DARK;
+            ctx.fillRect(0, 0, W, H);
+
+            // Bezel framing & orange corner brackets
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(6, 6, W - 12, H - 12);
+
+            const cLen = 22;
+            ctx.strokeStyle = EVA.NERV_ORANGE;
+            ctx.lineWidth = 2.0;
+            // 4 corners
+            ctx.beginPath();
+            ctx.moveTo(6, 6 + cLen); ctx.lineTo(6, 6); ctx.lineTo(6 + cLen, 6);
+            ctx.moveTo(W - 6 - cLen, 6); ctx.lineTo(W - 6, 6); ctx.lineTo(W - 6, 6 + cLen);
+            ctx.moveTo(6, H - 6 - cLen); ctx.lineTo(6, H - 6); ctx.lineTo(6 + cLen, H - 6);
+            ctx.moveTo(W - 6 - cLen, H - 6); ctx.lineTo(W - 6, H - 6); ctx.lineTo(W - 6, H - 6 - cLen);
+            ctx.stroke();
+
+            // 1. Top Header
+            renderHeader();
+
+            // 2. Left Panel: Battery & Rei Ayanami Entry Plug
+            renderLeftPanel();
+
+            // 3. Center Gauge: Speed & Reticle
+            renderCenterGauge();
+
+            // 4. Right Panel: MAGI Hexagons
+            renderRightPanel();
+
+            // 5. Bottom Footer
+            renderFooter();
+        }
+
+        // ==========================================
+        // 6. HEADER RENDERER
+        // ==========================================
+        function renderHeader() {
+            const hY = 12;
+            const hH = 38;
+
+            // Top bar background
+            ctx.fillStyle = 'rgba(8, 6, 14, 0.95)';
+            ctx.fillRect(10, hY, W - 20, hH);
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(10, hY, W - 20, hH);
+
+            // Left Tactical Callsign Pill
+            ctx.fillStyle = 'rgba(12, 10, 20, 0.9)';
+            ctx.fillRect(20, hY + 4, 210, hH - 8);
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.strokeRect(20, hY + 4, 210, hH - 8);
+            drawHazardStripes(24, hY + 7, 24, hH - 14, EVA.NERV_ORANGE);
+
+            ctx.font = 'bold 12px "Share Tech Mono"';
+            ctx.fillStyle = EVA.NERV_AMBER;
+            ctx.textAlign = 'left';
+            ctx.fillText("EVA-00 TACTICAL HUD", 56, hY + 23);
+
+            // Center Title: AUTHENTIC NERV COCKPIT
+            const cx = W / 2;
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 16px "Cinzel", serif';
+            ctx.fillStyle = EVA.TEXT_WHITE;
+            ctx.fillText("AUTHENTIC NERV COCKPIT", cx, hY + 18);
+
+            ctx.font = 'bold 11px "Share Tech Mono"';
+            ctx.fillStyle = '#b066ff';
+            ctx.fillText("FL4 e:HEV HUD-HUD", cx, hY + 32);
+
+            // Blinking Heartbeat Beacon
+            const beaconX = cx + 135;
+            const beaconY = hY + hH / 2;
+            const isBlink = Math.sin(animTick * 0.15) > 0;
+            if (isBlink) {
+                ctx.strokeStyle = 'rgba(0, 255, 102, 0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(beaconX, beaconY, 7, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.beginPath();
+            ctx.arc(beaconX, beaconY, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Activity dots
+            for (let d = 0; d < 3; d++) {
+                const actColor = ((animTick + d * 10) % 30 < 10) ? EVA.EVA_GREEN : '#332244';
+                ctx.fillStyle = actColor;
+                ctx.beginPath();
+                ctx.arc(cx - 145 - d * 8, beaconY, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Right Status Tag
+            ctx.fillStyle = 'rgba(12, 10, 20, 0.9)';
+            ctx.fillRect(W - 230, hY + 4, 210, hH - 8);
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.strokeRect(W - 230, hY + 4, 210, hH - 8);
+
+            ctx.font = 'bold 12px "Share Tech Mono"';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.textAlign = 'right';
+            ctx.fillText("MAGI SYNC : ACTIVE", W - 58, hY + 23);
+            drawHazardStripes(W - 48, hY + 7, 24, hH - 14, EVA.NERV_ORANGE);
+        }
+
+        // ==========================================
+        // 7. LEFT PANEL RENDERER (BATTERY & REI)
+        // ==========================================
+        function renderLeftPanel() {
+            const pX = 14;
+            const pY = 56;
+            const pW = 365;
+            const pH = 612;
+
+            // 1. Top Internal Battery Box
+            const topH = 124;
+            ctx.fillStyle = 'rgba(8, 6, 14, 0.95)';
+            ctx.fillRect(pX, pY, pW, topH);
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(pX, pY, pW, topH);
+
+            ctx.font = 'bold 16px "Cinzel", serif';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.textAlign = 'left';
+            ctx.fillText("INTERNAL BATTERY", pX + 16, pY + 26);
+
+            // Vertical Green Level Indicator
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.fillRect(pX + 16, pY + 34, 12, 42);
+
+            // Giant Countdown Clock
+            const isEV = telemetry.drive_mode === 'EV' || telemetry.engine_rpm === 0;
+            const remSec = Math.floor((telemetry.battery_soc_pct / 100.0) * 300);
+            const m = Math.floor(remSec / 60);
+            const s = remSec % 60;
+            const clockStr = isEV ? `00:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : "00:09:45";
+
+            ctx.font = 'bold 42px "Cinzel", serif';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.fillText(clockStr, pX + 36, pY + 70);
+
+            // Horizontal Battery Bar
+            const barX = pX + 16;
+            const barY = pY + 84;
+            const barW = pW - 130;
+            const barH = 24;
+
+            ctx.strokeStyle = EVA.EVA_GREEN;
+            ctx.lineWidth = 1.8;
+            ctx.strokeRect(barX, barY, barW, barH);
+            // Positive Tip
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.fillRect(barX + barW + 1, barY + 6, 5, 12);
+
+            // Fill
+            const fillW = Math.max(4, (barW - 6) * (telemetry.battery_soc_pct / 100.0));
+            ctx.fillRect(barX + 3, barY + 3, fillW, barH - 6);
+
+            // Dividers
+            ctx.strokeStyle = 'rgba(4, 10, 6, 0.7)';
+            ctx.lineWidth = 1.5;
+            for (let i = 1; i < 10; i++) {
+                const dx = barX + (barW / 10) * i;
+                ctx.beginPath();
+                ctx.moveTo(dx, barY + 3); ctx.lineTo(dx, barY + barH - 3);
+                ctx.stroke();
+            }
+
+            ctx.font = 'bold 15px "Cinzel", serif';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.fillText(`${Math.round(telemetry.battery_soc_pct)}% SoC`, barX + barW + 14, barY + 18);
+
+            // 2. Middle Chevron Arrow Ribbon
+            const midY = pY + topH + 10;
+            const midH = 28;
+            const arrowW = pW * 0.40;
+
+            ctx.fillStyle = '#4c1477';
+            ctx.beginPath();
+            ctx.moveTo(pX, midY);
+            ctx.lineTo(pX + arrowW, midY);
+            ctx.lineTo(pX + arrowW + 12, midY + midH / 2);
+            ctx.lineTo(pX + arrowW, midY + midH);
+            ctx.lineTo(pX, midY + midH);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.font = 'bold 10px "Share Tech Mono"';
+            ctx.fillStyle = EVA.TEXT_WHITE;
+            ctx.fillText("EMERGENCY", pX + 10, midY + 12);
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = EVA.EVA_YELLOW;
+            ctx.fillText("来リウ", pX + 24, midY + 24);
+
+            ctx.font = 'bold 12px "Share Tech Mono"';
+            ctx.fillStyle = '#00e5ff';
+            ctx.textAlign = 'right';
+            ctx.fillText("G-FORCE LOCK-ON", pX + pW - 14, midY + 19);
+
+            // 3. MONITOR Window with Rei Ayanami
+            const monY = midY + midH + 10;
+            const monH = pH - (monY - pY);
+
+            ctx.fillStyle = 'rgba(8, 6, 14, 0.95)';
+            ctx.fillRect(pX, monY, pW, monH);
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(pX, monY, pW, monH);
+
+            // Header of MONITOR
+            ctx.font = 'bold 12px "Share Tech Mono"';
+            ctx.fillStyle = EVA.TEXT_WHITE;
+            ctx.textAlign = 'left';
+            ctx.fillText("MONITOR", pX + 12, monY + 16);
+            ctx.textAlign = 'right';
+            ctx.fillText("■ ▲", pX + pW - 12, monY + 16);
+
+            const innerY = monY + 24;
+            const innerH = monH - 30;
+            const splitX = pX + pW * 0.32;
+
+            // Divider
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.beginPath();
+            ctx.moveTo(splitX, innerY); ctx.lineTo(splitX, innerY + innerH);
+            ctx.stroke();
+
+            // --- Left Sub-Window: 2D Animated Rei Ayanami ---
+            const charX = pX + 22;
+            const charY = innerY + 4;
+            const charW = splitX - charX - 8;
+            const charH = innerH - 8;
+
+            // Vertical Green Level Meter
+            ctx.strokeStyle = EVA.EVA_GREEN;
+            ctx.lineWidth = 1.0;
+            ctx.strokeRect(pX + 8, charY, 8, charH - 24);
+            for (let s = 0; s < 12; s++) {
+                const sy = charY + charH - 24 - (s + 1) * ((charH - 24) / 12);
+                ctx.fillStyle = EVA.EVA_GREEN;
+                ctx.fillRect(pX + 9, sy + 1, 6, ((charH - 24) / 12) - 2);
+            }
+            ctx.font = 'bold 8px monospace';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.textAlign = 'center';
+            ctx.fillText("50%", pX + 12, charY + charH - 10);
+
+            // Portrait Viewport & Breathing Dynamics
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(charX, charY, charW, charH);
+            ctx.clip();
+
+            ctx.fillStyle = '#04060c';
+            ctx.fillRect(charX, charY, charW, charH);
+
+            // Respiration sine wave & posture sway
+            const t = animTick * 0.07;
+            const bobY = Math.sin(t) * 4.5;
+            const breathScaleX = 1.0 + 0.018 * Math.sin(t);
+            const breathScaleY = 1.0 + 0.032 * Math.sin(t);
+            const tiltDeg = Math.sin(t * 0.5) * 1.5 - (telemetry.g_lat / 1.5) * 3.5;
+
+            // Draw Ascending L.C.L. micro-bubbles
+            for (let bi = 0; bi < 6; bi++) {
+                const bpY = (charY + charH) - ((animTick * 1.8 + bi * 38) % charH);
+                const bpX = charX + 6 + (bi * 19) % Math.max(10, charW - 12);
+                const bAlpha = 0.4 + 0.3 * Math.sin(t * 1.5 + bi);
+                ctx.fillStyle = `rgba(0, 240, 255, ${bAlpha})`;
+                ctx.fillRect(bpX, bpY, 2.5, 2.5);
+            }
+
+            // Draw Portrait with Breathing Transform
+            if (reiImg.complete && reiImg.naturalWidth > 0) {
+                ctx.save();
+                ctx.translate(charX + charW / 2, charY + charH);
+                ctx.rotate((tiltDeg * Math.PI) / 180);
+                ctx.scale(breathScaleX, breathScaleY);
+                ctx.translate(-(charX + charW / 2), -(charY + charH));
+
+                ctx.drawImage(reiImg, charX, charY + bobY, charW, charH);
+                ctx.restore();
+            }
+
+            // Holographic Laser Scanline
+            const scanY = charY + (animTick * 2.2) % charH;
+            ctx.strokeStyle = 'rgba(0, 255, 64, 0.7)';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.moveTo(charX, scanY); ctx.lineTo(charX + charW, scanY);
+            ctx.stroke();
+
+            const scanGrad = ctx.createLinearGradient(charX, scanY - 12, charX, scanY);
+            scanGrad.addColorStop(0, 'rgba(0, 255, 64, 0)');
+            scanGrad.addColorStop(1, 'rgba(0, 255, 64, 0.25)');
+            ctx.fillStyle = scanGrad;
+            ctx.fillRect(charX, scanY - 12, charW, 12);
+
+            ctx.restore();
+
+            // Portrait Border & LIVE LINK badge
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(charX, charY, charW, charH);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+            ctx.fillRect(charX + 4, charY + 4, 66, 14);
+            ctx.fillStyle = (animTick % 30 < 20) ? EVA.EVA_GREEN : '#285028';
+            ctx.fillRect(charX + 8, charY + 8, 5, 5);
+            ctx.font = 'bold 9px "Share Tech Mono"';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.textAlign = 'left';
+            ctx.fillText("LIVE LINK", charX + 17, charY + 15);
+
+            // --- Right Sub-Window: Sync Rate, Dual Waveforms, Speech & Equalizer ---
+            const rightX = splitX + 8;
+            const rightW = (pX + pW) - rightX - 8;
+
+            // Sync Rate Title
+            ctx.font = 'bold 12px "Cinzel", serif';
+            ctx.fillStyle = EVA.TEXT_WHITE;
+            ctx.fillText("SYNCHRONIZATION RATE", rightX, innerY + 14);
+
+            // Giant Sync Percentage
+            const syncVal = (98.4 + 0.4 * Math.sin(animTick * 0.05)).toFixed(1);
+            ctx.font = 'bold 36px "Cinzel", serif';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.fillText(`${syncVal}%`, rightX, innerY + 48);
+
+            // Dual Oscilloscopes
+            const waveH = (innerH - 124) / 2.0;
+            const w1Y = innerY + 54;
+
+            // Wave 1: Voltage
+            ctx.font = 'bold 11px "Share Tech Mono"';
+            ctx.fillStyle = EVA.TEXT_WHITE;
+            ctx.fillText("BIOMETRIC TELEMETRY", rightX, w1Y + 10);
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.textAlign = 'right';
+            ctx.fillText(`${Math.round(telemetry.battery_voltage_v)}V`, rightX + rightW, w1Y + 10);
+            drawWaveform(rightX, w1Y + 14, rightW, waveH, voltHistory, EVA.EVA_GREEN, 160, 190);
+
+            // Wave 2: Temperature
+            const w2Y = w1Y + waveH + 18;
+            ctx.textAlign = 'left';
+            ctx.fillStyle = EVA.TEXT_WHITE;
+            ctx.fillText("BIOMETRIC", rightX, w2Y + 10);
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.textAlign = 'right';
+            ctx.fillText(`${Math.round(telemetry.battery_temp_c)}°C`, rightX + rightW, w2Y + 10);
+            drawWaveform(rightX, w2Y + 14, rightW, waveH, tempHistory, EVA.EVA_GREEN, 15, 45);
+
+            // Reactive Speech Bubble & Jumping Equalizer
+            const diagY = w2Y + waveH + 8;
+            const diagH = innerY + innerH - diagY - 3;
+
+            // Determine Quote & Color
+            const gTotal = Math.sqrt(telemetry.g_lat ** 2 + telemetry.g_long ** 2);
+            let speechTag = "⚡ 純電巡航 (EV)";
+            let speechText = "「內部電源運作中，神經迴路……無異常。」";
+            let accentCol = EVA.EVA_GREEN;
+
+            if (telemetry.throttle_pct > 60 || telemetry.motor_power_kw > 40) {
+                speechTag = "🔥 大腳油門 / 高功率";
+                speechText = "「A.T.力場全開！出力限制器解除……衝刺。」";
+                accentCol = EVA.NERV_RED;
+            } else if (gTotal > 0.40) {
+                speechTag = "🌀 過彎 G 力飆高";
+                speechText = "「G 力急劇上升……沒問題的，姿勢制御正常。」";
+                accentCol = EVA.NERV_ORANGE;
+            } else if (telemetry.drive_mode === 'REGEN' || telemetry.motor_power_kw < -3.0) {
+                speechTag = "🔋 動能回收 (Regen)";
+                speechText = "「動能回路啟動，內部電源充填中。」";
+                accentCol = EVA.EVA_GREEN;
+            } else if (telemetry.engine_rpm > 100 || telemetry.drive_mode === 'HYBRID') {
+                speechTag = "⚙️ 外部發電 (Hybrid)";
+                speechText = "「外部電源直連，發電迴路啟動受諾。」";
+                accentCol = EVA.NERV_AMBER;
+            }
+
+            // Sync with UI Banner & Trigger Speech
+            if (speechText !== lastSpeechText) {
+                lastSpeechText = speechText;
+                document.getElementById('speechTagUI').textContent = speechTag;
+                document.getElementById('speechTagUI').style.color = accentCol;
+                document.getElementById('speechTextUI').textContent = speechText;
+                speakVoice(speechText);
+            }
+
+            ctx.fillStyle = 'rgba(10, 8, 16, 0.95)';
+            ctx.fillRect(rightX, diagY, rightW, diagH);
+            ctx.strokeStyle = accentCol;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(rightX, diagY, rightW, diagH);
+
+            // Speech Tag
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 11px "Share Tech Mono"';
+            ctx.fillStyle = accentCol;
+            ctx.fillText(speechTag, rightX + 6, diagY + 13);
+
+            // 6-Band Jumping Audio Equalizer
+            const eqX = rightX + rightW - 50;
+            const eqY = diagY + 4;
+            for (let bi = 0; bi < 6; bi++) {
+                const bh = Math.floor(3 + 8 * Math.abs(Math.sin(animTick * 0.28 + bi * 0.9)));
+                ctx.fillStyle = accentCol;
+                ctx.fillRect(eqX + bi * 7, eqY + 11 - bh, 4, bh);
+            }
+
+            // Full Rei Ayanami Dialogue Quote
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillStyle = EVA.TEXT_WHITE;
+            ctx.fillText(speechText, rightX + 5, diagY + 28);
+        }
+
+        // ==========================================
+        // 8. CENTER GAUGE RENDERER
+        // ==========================================
+        function renderCenterGauge() {
+            const cx = W / 2.0;
+            const cy = 350.0;
+            const r = 185.0;
+
+            // 1. Concentric Targeting Rings
+            ctx.strokeStyle = '#182418';
+            ctx.lineWidth = 1.0;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#223822';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.72, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Crosshairs
+            ctx.strokeStyle = '#1f381f';
+            ctx.beginPath();
+            ctx.moveTo(cx - r - 15, cy); ctx.lineTo(cx + r + 15, cy);
+            ctx.moveTo(cx, cy - r - 15); ctx.lineTo(cx, cy + r + 15);
+            ctx.stroke();
+
+            // 2. Outer Chamfered Brackets: ( [ 58 ] )
+            // Left Chamfered Acid Green Bracket: (
+            ctx.strokeStyle = EVA.EVA_GREEN;
+            ctx.lineWidth = 4.0;
+            ctx.beginPath();
+            ctx.moveTo(cx - 165, cy - 130);
+            ctx.lineTo(cx - 180, cy - 85);
+            ctx.lineTo(cx - 180, cy + 85);
+            ctx.lineTo(cx - 165, cy + 130);
+            ctx.stroke();
+
+            // Right Chamfered Acid Green Bracket: )
+            ctx.beginPath();
+            ctx.moveTo(cx + 165, cy - 130);
+            ctx.lineTo(cx + 180, cy - 85);
+            ctx.lineTo(cx + 180, cy + 85);
+            ctx.lineTo(cx + 165, cy + 130);
+            ctx.stroke();
+
+            // Left NERV Orange Square Bracket: [
+            ctx.strokeStyle = EVA.NERV_ORANGE;
+            ctx.lineWidth = 3.0;
+            ctx.beginPath();
+            ctx.moveTo(cx - 120, cy - 100);
+            ctx.lineTo(cx - 140, cy - 100);
+            ctx.lineTo(cx - 140, cy + 100);
+            ctx.lineTo(cx - 120, cy + 100);
+            ctx.stroke();
+
+            // Right NERV Orange Square Bracket: ]
+            ctx.beginPath();
+            ctx.moveTo(cx + 120, cy - 100);
+            ctx.lineTo(cx + 140, cy - 100);
+            ctx.lineTo(cx + 140, cy + 100);
+            ctx.lineTo(cx + 120, cy + 100);
+            ctx.stroke();
+
+            // 3. Top Radial Chevron Arc Crown
+            ctx.strokeStyle = EVA.NERV_RED;
+            ctx.lineWidth = 3.0;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, -Math.PI * 0.72, -Math.PI * 0.28);
+            ctx.stroke();
+
+            // Top Triangle Lock Marker
+            ctx.fillStyle = EVA.NERV_RED;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - r - 10);
+            ctx.lineTo(cx - 8, cy - r - 2);
+            ctx.lineTo(cx + 8, cy - r - 2);
+            ctx.closePath();
+            ctx.fill();
+
+            // 4. Dynamic G-Force Lock-On Target Box [ + ]
+            const gScale = 75.0;
+            const targetX = cx + telemetry.g_lat * gScale;
+            const targetY = cy - telemetry.g_long * gScale;
+
+            ctx.strokeStyle = EVA.NERV_AMBER;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(targetX - 7, targetY - 7, 14, 14);
+            ctx.beginPath();
+            ctx.moveTo(targetX - 4, targetY); ctx.lineTo(targetX + 4, targetY);
+            ctx.moveTo(targetX, targetY - 4); ctx.lineTo(targetX, targetY + 4);
+            ctx.stroke();
+
+            // 5. Huge Cream Serif Speed Display
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 96px "Cinzel", serif';
+            ctx.fillStyle = '#fff8b0';
+            ctx.fillText(Math.round(telemetry.speed_kmh), cx, cy + 12);
+
+            ctx.font = 'bold 18px "Cinzel", serif';
+            ctx.fillStyle = '#fff8b0';
+            ctx.fillText("km/h", cx, cy + 42);
+
+            ctx.font = 'bold 13px "Share Tech Mono"';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.fillText("G-FORCE LOCK-ON", cx, cy + 62);
+
+            // Bottom Tactical Power Strip
+            const isEV = telemetry.drive_mode === 'EV' || telemetry.engine_rpm === 0;
+            const modeText = isEV ? "⚡ INTERNAL BATTERY // EV" : "⚙ UMBILICAL POWER // HYB";
+            ctx.fillStyle = 'rgba(8, 6, 14, 0.9)';
+            ctx.fillRect(cx - 100, cy + 115, 200, 22);
+            ctx.strokeStyle = isEV ? EVA.EVA_GREEN : EVA.NERV_AMBER;
+            ctx.lineWidth = 1.0;
+            ctx.strokeRect(cx - 100, cy + 115, 200, 22);
+
+            ctx.font = 'bold 11px "Share Tech Mono"';
+            ctx.fillStyle = isEV ? EVA.EVA_GREEN : EVA.NERV_AMBER;
+            ctx.fillText(modeText, cx, cy + 130);
+
+            // Telemetry coordinates
+            ctx.font = '10px "Share Tech Mono"';
+            ctx.fillStyle = EVA.TEXT_MUTED;
+            const latStr = (telemetry.g_lat >= 0 ? "+" : "") + telemetry.g_lat.toFixed(2) + "G";
+            const lonStr = (telemetry.g_long >= 0 ? "+" : "") + telemetry.g_long.toFixed(2) + "G";
+            ctx.fillText(`LAT: ${latStr}  LON: ${lonStr}  PEAK: 0.82G`, cx, cy + 154);
+
+            // Left & Right Hazard Collision Pylons
+            drawHazardStripes(cx - 235, cy - 140, 10, 280, EVA.NERV_ORANGE);
+            drawHazardStripes(cx + 225, cy - 140, 10, 280, EVA.NERV_ORANGE);
+        }
+
+        // ==========================================
+        // 9. RIGHT PANEL RENDERER (MAGI HONEYCOMB)
+        // ==========================================
+        function renderRightPanel() {
+            const pX = W - 379;
+            const pY = 56;
+            const pW = 365;
+            const pH = 612;
+
+            // Outer Card Frame
+            ctx.fillStyle = 'rgba(8, 6, 14, 0.95)';
+            ctx.fillRect(pX, pY, pW, pH);
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(pX, pY, pW, pH);
+
+            // Top Hazard Stripe
+            drawHazardStripes(pX + 12, pY + 8, pW - 24, 4, EVA.NERV_ORANGE);
+
+            // Header Title
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 16px "Cinzel", serif';
+            ctx.fillStyle = EVA.NERV_AMBER;
+            ctx.fillText("MAGI TELEMETRY", pX + 16, pY + 28);
+
+            ctx.textAlign = 'right';
+            ctx.font = 'bold 12px "Share Tech Mono"';
+            ctx.fillStyle = EVA.NERV_ORANGE;
+            ctx.fillText("// MAGI-01", pX + pW - 16, pY + 28);
+
+            // Hexagon Cluster Geometry
+            const cx = pX + pW / 2.0;
+            const r = 52.0; // Enlarged Hexagons
+            const dx = 1.73205 * r;     // ≈ 90.07px
+            const dxHalf = dx / 2.0;   // ≈ 45.03px
+            const dy = 1.5 * r;         // ≈ 78.00px
+
+            // Row 1 (Top: 3 Hexes)
+            const cy1 = pY + 86.0;
+            drawMagiHex(cx - dx, cy1, r, '#a020f0', "COOLANT TEMP", `${Math.round(telemetry.coolant_temp_c)}°C`, "ENG STATUS", EVA.EVA_YELLOW);
+            const rpmStr = telemetry.engine_rpm > 0 ? `${telemetry.engine_rpm}` : "OFF";
+            const rpmFoot = telemetry.engine_rpm > 0 ? `${Math.round(telemetry.engine_rpm / 6000 * 100)}%` : "EV STANDBY";
+            drawMagiHex(cx, cy1, r, '#ff8800', "ENG RPM", rpmStr, rpmFoot, telemetry.engine_rpm > 0 ? EVA.NERV_AMBER : EVA.EVA_GREEN);
+            drawMagiHex(cx + dx, cy1, r, '#ff8800', "AUX BATT", `${telemetry.aux_voltage.toFixed(1)}V`, "14.3V NORM", EVA.EVA_YELLOW);
+
+            // Row 2 (Mid: 2 Hexes)
+            const cy2 = cy1 + dy;
+            drawMagiHex(cx - dxHalf, cy2, r, '#a020f0', "THROTTLE", `${Math.round(telemetry.throttle_pct)}%`, "POS. REQ", EVA.EVA_YELLOW);
+            const dispPwr = Math.round(Math.abs(telemetry.motor_power_kw));
+            const pwrFoot = telemetry.motor_power_kw < -1.0 ? "REGEN" : "NOMINAL";
+            drawMagiHex(cx + dxHalf, cy2, r, '#a020f0', "SYSTEM OUTPUT", `${dispPwr}kW`, pwrFoot, telemetry.motor_power_kw < -1.0 ? EVA.EVA_GREEN : EVA.EVA_YELLOW);
+
+            // Middle Segmented LED Meters
+            const mX = pX + 16;
+            const mW = pW - 32;
+            const mY1 = Math.floor(cy2 + r * 0.95);
+            drawHorizontalMeter(mX, mY1, mW, 19, "POWER OUTPUT / LOWER", Math.min(1.0, Math.max(0, telemetry.motor_power_kw / 120.0)), EVA.EVA_GREEN, EVA.NERV_ORANGE);
+
+            const mY2 = mY1 + 26;
+            drawHorizontalMeter(mX, mY2, mW, 19, "MQBITER / POWER", telemetry.throttle_pct / 100.0, EVA.NERV_AMBER, EVA.NERV_RED);
+
+            // Row 3 (Lower: 3 Hexes)
+            const cy3 = mY2 + r + 24;
+            drawMagiHex(cx - dx, cy3, r, '#ff8800', "IPU VOLT", `${Math.round(telemetry.battery_voltage_v)}V`, "HIGH VOLT", EVA.EVA_YELLOW);
+            drawMagiHex(cx, cy3, r, '#a020f0', "POWER OUTPUT", `${Math.max(0, telemetry.motor_power_kw).toFixed(1)}`, "kW MOTOR", EVA.EVA_GREEN);
+            drawMagiHex(cx + dx, cy3, r, '#ff8800', "IPU TEMP", `${Math.round(telemetry.battery_temp_c)}°C`, "THERMAL OK", EVA.EVA_YELLOW);
+
+            // Row 4 (Bottom Mid: 2 Hexes)
+            const cy4 = cy3 + dy;
+            const currAmp = (Math.abs(telemetry.motor_power_kw * 1000 / Math.max(1.0, telemetry.battery_voltage_v))).toFixed(1);
+            drawMagiHex(cx - dxHalf, cy4, r, '#a020f0', "DIAGNOSTIC", currAmp, "53A 電流", EVA.EVA_YELLOW);
+
+            const isEV = telemetry.drive_mode === 'EV' || telemetry.engine_rpm === 0;
+            drawMagiHex(cx + dxHalf, cy4, r, isEV ? '#ff8800' : '#a020f0', "DRIVE MODE", isEV ? "EV MODE" : "HYBRID", "SYNC ACTIVE", isEV ? EVA.EVA_GREEN : EVA.NERV_ORANGE);
+
+            // Row 5 (Bottom Anchor Hex: Speed)
+            const cy5 = cy4 + dy;
+            drawMagiHex(cx, cy5, r, '#ff8800', "VHG.ASIS", `${telemetry.speed_kmh.toFixed(1)}`, "km/h SPEED", EVA.EVA_YELLOW);
+
+            // Bottom Status Pill
+            const pillY = cy5 + r * 0.92;
+            if (pillY + 24 <= pY + pH - 6) {
+                drawHazardBadge(pX + 16, pillY, pW - 32, 24, "MAGI SYSTEM NOMINAL");
+            }
+        }
+
+        // Pointy-topped Hexagon Helper
+        function drawMagiHex(cx, cy, r, borderCol, title, val, footer, valCol) {
+            ctx.save();
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 180) * (60 * i - 30);
+                const x = cx + r * Math.cos(angle);
+                const y = cy + r * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = EVA.HEX_BG;
+            ctx.fill();
+            ctx.strokeStyle = borderCol;
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+
+            // Title
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 9.5px "Share Tech Mono"';
+            ctx.fillStyle = EVA.TEXT_MUTED;
+            ctx.fillText(title, cx, cy - r * 0.50);
+
+            // Center Serif Value (Enlarged)
+            ctx.font = 'bold 18px "Cinzel", serif';
+            ctx.fillStyle = valCol || EVA.EVA_YELLOW;
+            ctx.fillText(val, cx, cy + 4);
+
+            // Footer
+            ctx.font = 'bold 9.5px "Share Tech Mono"';
+            ctx.fillStyle = EVA.NERV_AMBER;
+            ctx.fillText(footer, cx, cy + r * 0.60);
+
+            ctx.restore();
+        }
+
+        // Horizontal Segmented Meter
+        function drawHorizontalMeter(x, y, w, h, label, normVal, colStart, colEnd) {
+            const labelW = 140;
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 10px "Share Tech Mono"';
+            ctx.fillStyle = EVA.TEXT_MUTED;
+            ctx.fillText(label, x, y + 13);
+
+            const barX = x + labelW + 6;
+            const barW = w - labelW - 6;
+            const numSegs = 16;
+            const gap = 2.5;
+            const segW = (barW - (numSegs - 1) * gap) / numSegs;
+            const activeCount = Math.round(Math.max(0, Math.min(1.0, normVal)) * numSegs);
+
+            for (let i = 0; i < numSegs; i++) {
+                const sx = barX + i * (segW + gap);
+                ctx.fillStyle = i < activeCount ? (i > 10 ? colEnd : colStart) : 'rgba(20, 14, 28, 0.8)';
+                ctx.fillRect(sx, y + 2, segW, h - 4);
+            }
+        }
+
+        // Hazard Badge
+        function drawHazardBadge(x, y, w, h, text) {
+            ctx.fillStyle = 'rgba(10, 8, 16, 0.95)';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = EVA.NERV_ORANGE;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(x, y, w, h);
+
+            drawHazardStripes(x + 2, y + 2, 28, h - 4, EVA.NERV_ORANGE);
+            drawHazardStripes(x + w - 30, y + 2, 28, h - 4, EVA.NERV_ORANGE);
+
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 11px "Share Tech Mono"';
+            ctx.fillStyle = EVA.NERV_AMBER;
+            ctx.fillText(text, x + w / 2, y + 16);
+        }
+
+        // Hazard Stripes Helper
+        function drawHazardStripes(x, y, w, h, stripeCol) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.clip();
+
+            ctx.fillStyle = '#0a0810';
+            ctx.fillRect(x, y, w, h);
+
+            ctx.strokeStyle = stripeCol;
+            ctx.lineWidth = 4;
+            const step = 8;
+            for (let sx = x - h; sx < x + w + h; sx += step) {
+                ctx.beginPath();
+                ctx.moveTo(sx, y + h);
+                ctx.lineTo(sx + h, y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Waveform Helper
+        function drawWaveform(x, y, w, h, data, col, minV, maxV) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = '#1e2d1e';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, w, h);
+
+            // Grid line
+            ctx.strokeStyle = '#152415';
+            ctx.beginPath();
+            ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2);
+            ctx.stroke();
+
+            if (!data || data.length < 2) return;
+
+            const span = Math.max(1.0, maxV - minV);
+            const stepX = w / (data.length - 1);
+
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let i = 0; i < data.length; i++) {
+                const norm = Math.max(0, Math.min(1.0, (data[i] - minV) / span));
+                const px = x + i * stepX;
+                const py = y + h - (norm * (h - 4)) - 2;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        }
+
+        // ==========================================
+        // 10. FOOTER RENDERER
+        // ==========================================
+        function renderFooter() {
+            const fY = H - 42;
+            const fH = 34;
+
+            ctx.fillStyle = 'rgba(8, 6, 14, 0.95)';
+            ctx.fillRect(10, fY, W - 20, fH);
+            ctx.strokeStyle = EVA.PURPLE_FRAME;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(10, fY, W - 20, fH);
+
+            // Left Clock
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 15px "Cinzel", serif';
+            ctx.fillStyle = EVA.EVA_GREEN;
+            ctx.fillText(`⏱ ${timeStr} JST`, 24, fY + 22);
+
+            // Center Red NERV Trapezoid
+            const trapCx = W / 2.0;
+            ctx.fillStyle = EVA.NERV_RED;
+            ctx.beginPath();
+            ctx.moveTo(trapCx - 85, fY);
+            ctx.lineTo(trapCx + 85, fY);
+            ctx.lineTo(trapCx + 105, fY + fH);
+            ctx.lineTo(trapCx - 105, fY + fH);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 13px "Cinzel", serif';
+            ctx.fillStyle = EVA.TEXT_WHITE;
+            ctx.fillText("WARNING NERV", trapCx, fY + 22);
+
+            // Far-Right PRND Gear Selector Strip
+            const gears = ["P", "R", "N", "D", "B"];
+            const currGear = telemetry.gear.toUpperCase();
+            const boxW = 26;
+            const boxH = 20;
+            const boxGap = 5;
+            const totalGearW = gears.length * boxW + (gears.length - 1) * boxGap;
+            const gearStartX = W - 24 - totalGearW;
+            const boxY = fY + (fH - boxH) / 2;
+
+            for (let i = 0; i < gears.length; i++) {
+                const gx = gearStartX + i * (boxW + boxGap);
+                const isActive = (gears[i] === currGear);
+
+                if (isActive) {
+                    ctx.fillStyle = 'rgba(255, 102, 0, 0.35)';
+                    ctx.fillRect(gx, boxY, boxW, boxH);
+                    ctx.strokeStyle = EVA.NERV_ORANGE;
+                    ctx.lineWidth = 1.6;
+                    ctx.strokeRect(gx, boxY, boxW, boxH);
+
+                    ctx.font = 'bold 13px "Share Tech Mono"';
+                    ctx.fillStyle = EVA.NERV_ORANGE;
+                    ctx.fillText(gears[i], gx + boxW / 2, boxY + 15);
+                } else {
+                    ctx.fillStyle = 'rgba(12, 10, 18, 0.7)';
+                    ctx.fillRect(gx, boxY, boxW, boxH);
+                    ctx.strokeStyle = '#282032';
+                    ctx.lineWidth = 1.0;
+                    ctx.strokeRect(gx, boxY, boxW, boxH);
+
+                    ctx.font = '12px "Share Tech Mono"';
+                    ctx.fillStyle = EVA.TEXT_DIM;
+                    ctx.fillText(gears[i], gx + boxW / 2, boxY + 15);
+                }
+            }
+        }
+
+        // ==========================================
+        // 11. CYBERPUNK THEME RENDERER
+        // ==========================================
+        function renderCyberpunkDashboard() {
+            ctx.fillStyle = CYBER.BG_DARK;
+            ctx.fillRect(0, 0, W, H);
+
+            ctx.strokeStyle = CYBER.CYAN_DIM;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(6, 6, W - 12, H - 12);
+
+            // Center Speed
+            ctx.textAlign = 'center';
+            ctx.font = '900 110px "Orbitron", sans-serif';
+            ctx.fillStyle = CYBER.CYAN;
+            ctx.fillText(Math.round(telemetry.speed_kmh), W / 2, H / 2 + 30);
+
+            ctx.font = 'bold 22px "Orbitron", sans-serif';
+            ctx.fillStyle = CYBER.YELLOW;
+            ctx.fillText("KM/H // CYBER DASHBOARD", W / 2, H / 2 + 75);
+
+            // Left Cyber Race Queen
+            const pX = 20, pY = 60, pW = 340, pH = 580;
+            ctx.strokeStyle = CYBER.CYAN;
+            ctx.strokeRect(pX, pY, pW, pH);
+            if (rqImg.complete && rqImg.naturalWidth > 0) {
+                ctx.drawImage(rqImg, pX + 10, pY + 10, pW - 20, pH - 20);
+            }
+
+            // Right Tech Telemetry
+            const rX = W - 360, rY = 60, rW = 340, rH = 580;
+            ctx.strokeStyle = CYBER.MAGENTA;
+            ctx.strokeRect(rX, rY, rW, rH);
+            ctx.font = 'bold 20px "Orbitron", sans-serif';
+            ctx.fillStyle = CYBER.MAGENTA;
+            ctx.fillText("NEO-TOKYO TELEMETRY", rX + rW / 2, rY + 40);
+
+            ctx.font = '16px "Share Tech Mono"';
+            ctx.fillStyle = CYBER.TEXT_WHITE;
+            ctx.fillText(`BATTERY SoC: ${Math.round(telemetry.battery_soc_pct)}%`, rX + rW / 2, rY + 100);
+            ctx.fillText(`MOTOR POWER: ${telemetry.motor_power_kw.toFixed(1)} kW`, rX + rW / 2, rY + 140);
+            ctx.fillText(`THROTTLE: ${Math.round(telemetry.throttle_pct)}%`, rX + rW / 2, rY + 180);
+            ctx.fillText(`LATERAL G: ${telemetry.g_lat.toFixed(2)} G`, rX + rW / 2, rY + 220);
+        }
+
+        // ==========================================
+        // 12. AUTO DRIVE SIMULATION LOGIC
+        // ==========================================
+        function updateAutoSimulation() {
+            const phase = (animTick % 600) / 600.0; // 10 second loop
+
+            if (phase < 0.25) {
+                // Phase 1: EV Cruise (純電巡航)
+                telemetry.drive_mode = 'EV';
+                telemetry.engine_rpm = 0;
+                telemetry.speed_kmh = 45.0 + Math.sin(animTick * 0.05) * 5.0;
+                telemetry.throttle_pct = 25.0 + Math.sin(animTick * 0.08) * 8.0;
+                telemetry.motor_power_kw = 12.0;
+                telemetry.g_lat = Math.sin(animTick * 0.03) * 0.12;
+                telemetry.g_long = 0.05;
+            } else if (phase < 0.50) {
+                // Phase 2: High Power Full Throttle (大腳油門衝刺)
+                telemetry.drive_mode = 'HYBRID';
+                telemetry.engine_rpm = 3200;
+                telemetry.throttle_pct = 85.0;
+                telemetry.motor_power_kw = 72.0;
+                telemetry.speed_kmh = Math.min(125.0, telemetry.speed_kmh + 0.35);
+                telemetry.g_lat = 0.08;
+                telemetry.g_long = 0.45;
+            } else if (phase < 0.75) {
+                // Phase 3: High G Cornering (急彎高 G 力)
+                telemetry.drive_mode = 'HYBRID';
+                telemetry.engine_rpm = 2400;
+                telemetry.throttle_pct = 45.0;
+                telemetry.motor_power_kw = 32.0;
+                telemetry.speed_kmh = Math.max(65.0, telemetry.speed_kmh - 0.2);
+                telemetry.g_lat = 0.68 * (Math.sin(animTick * 0.1) > 0 ? 1 : -1);
+                telemetry.g_long = -0.15;
+            } else if (phase < 0.90) {
+                // Phase 4: Regenerative Braking (動能回收)
+                telemetry.drive_mode = 'REGEN';
+                telemetry.engine_rpm = 0;
+                telemetry.throttle_pct = 0.0;
+                telemetry.motor_power_kw = -18.5;
+                telemetry.speed_kmh = Math.max(30.0, telemetry.speed_kmh - 0.55);
+                telemetry.g_lat = 0.04;
+                telemetry.g_long = -0.38;
+            } else {
+                // Phase 5: Engine Generator Charge (引擎發電)
+                telemetry.drive_mode = 'HYBRID';
+                telemetry.engine_rpm = 1800;
+                telemetry.throttle_pct = 32.0;
+                telemetry.motor_power_kw = 10.0;
+                telemetry.speed_kmh = 38.0;
+                telemetry.g_lat = 0.05;
+                telemetry.g_long = 0.08;
+            }
+
+            // Sync Sliders
+            document.getElementById('sliderThrottle').value = telemetry.throttle_pct;
+            document.getElementById('valThrottle').textContent = `${Math.round(telemetry.throttle_pct)}%`;
+
+            document.getElementById('sliderSpeed').value = telemetry.speed_kmh;
+            document.getElementById('valSpeed').textContent = `${Math.round(telemetry.speed_kmh)} km/h`;
+
+            document.getElementById('sliderGLat').value = telemetry.g_lat * 100;
+            document.getElementById('valGLat').textContent = `${telemetry.g_lat >= 0 ? '+' : ''}${telemetry.g_lat.toFixed(2)} G`;
+        }
+
+        // ==========================================
+        // 13. UI EVENT LISTENERS
+        // ==========================================
+        const btnAutoSim = document.getElementById('btnAutoSim');
+        btnAutoSim.addEventListener('click', () => {
+            autoSim = !autoSim;
+            btnAutoSim.classList.toggle('active', autoSim);
+            btnAutoSim.textContent = autoSim ? "🚗 實時自動路試模擬：開啟" : "🚗 實時自動路試模擬：關閉";
+        });
+
+        const btnToggleTheme = document.getElementById('btnToggleTheme');
+        btnToggleTheme.addEventListener('click', () => {
+            theme = (theme === "eva") ? "cyberpunk" : "eva";
+        });
+
+        const btnVoice = document.getElementById('btnVoice');
+        btnVoice.addEventListener('click', () => {
+            voiceEnabled = !voiceEnabled;
+            btnVoice.textContent = voiceEnabled ? "🔊 綾波零語音朗讀：開啟" : "🔇 綾波零語音朗讀：關閉";
+        });
+
+        // Sliders
+        document.getElementById('sliderThrottle').addEventListener('input', (e) => {
+            autoSim = false;
+            btnAutoSim.classList.remove('active');
+            btnAutoSim.textContent = "🚗 實時自動路試模擬：手動";
+            telemetry.throttle_pct = parseFloat(e.target.value);
+            telemetry.motor_power_kw = (telemetry.throttle_pct / 100.0) * 85.0;
+            document.getElementById('valThrottle').textContent = `${Math.round(telemetry.throttle_pct)}%`;
+        });
+
+        document.getElementById('sliderSpeed').addEventListener('input', (e) => {
+            autoSim = false;
+            btnAutoSim.classList.remove('active');
+            btnAutoSim.textContent = "🚗 實時自動路試模擬：手動";
+            telemetry.speed_kmh = parseFloat(e.target.value);
+            document.getElementById('valSpeed').textContent = `${Math.round(telemetry.speed_kmh)} km/h`;
+        });
+
+        document.getElementById('sliderGLat').addEventListener('input', (e) => {
+            autoSim = false;
+            btnAutoSim.classList.remove('active');
+            btnAutoSim.textContent = "🚗 實時自動路試模擬：手動";
+            telemetry.g_lat = parseFloat(e.target.value) / 100.0;
+            document.getElementById('valGLat').textContent = `${telemetry.g_lat >= 0 ? '+' : ''}${telemetry.g_lat.toFixed(2)} G`;
+        });
+
+        document.getElementById('sliderSoC').addEventListener('input', (e) => {
+            telemetry.battery_soc_pct = parseFloat(e.target.value);
+            document.getElementById('valSoC').textContent = `${Math.round(telemetry.battery_soc_pct)}%`;
+        });
+
+        // Keyboard Shortcut: T key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 't' || e.key === 'T') {
+                theme = (theme === "eva") ? "cyberpunk" : "eva";
+            }
+        });
+
+        // Start animation loop
+        render();
+    </script>
+</body>
+</html>

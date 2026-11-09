@@ -1,0 +1,25 @@
+# Virtual environments
+bin/
+lib/
+lib64/
+include/
+site-packages/
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Temporary test screenshots
+test_speech_*.png
+pyqt5_actual_render*.png
+pyqt5_render_*.png
